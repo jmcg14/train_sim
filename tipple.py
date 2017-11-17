@@ -37,11 +37,12 @@ class Tipple():
 
     def update_tipple(self, t, q):
 
+        '''
         print '\ntipple updated: '
         print 't_new: ' + str(t)
         print 'q_new: ' + str(q)
         print ''
-
+        '''
         self.t_last_used = t
         self.q_last_used = q
 
