@@ -7,11 +7,14 @@ class Train():
         self.departure_time = 0
         self.wait_time = 0
         self.engines = engines
+
         if(engines == 5):
             self.capacity = 200.0
         else:
             self.capacity = 100.0
         self.loaded = 0.0
+        #for tracking labor costs
+        self.tipple_cost_at_exit = 0
 
     def get_arrival_time(self):
         return self.arrival_time
@@ -31,11 +34,18 @@ class Train():
     def get_loaded(self):
         return self.loaded
 
+    def get_tipple_cost_at_exit(self):
+        return self.tipple_cost_at_exit
+
     def set_departure_time(self, time):
         self.departure_time = time
 
     def set_wait_time(self, time):
         self.wait_time = time
+
+    def set_tipple_cost_at_exit(self, cost):
+        self.tipple_cost_at_exit = cost
+
 
     def inc_wait_time(self, t):
         self.wait_time += t
@@ -44,6 +54,9 @@ class Train():
         self.loaded += units
 
     def print_info(self):
+        '''
+        prints train information
+        '''
         print "Engines: " + str(self.engines)
         print "Arrival Time: " + str(self.arrival_time)
         print "Departure Time: " + str(self.departure_time)

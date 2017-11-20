@@ -6,6 +6,7 @@ class Tipple():
         self.c_of_op = 0
         self.pay_rate1 = 9000.0/60.0
         self.pay_rate2 = 21000.0/60.0
+        self.pay_rate3 = 33000.0/60.0
         self.single_load_rate = 150.0/360.0
         self.capacity = 150.0
 
@@ -29,6 +30,8 @@ class Tipple():
         cost = 0
         if(num_crews == 2):
             cost = (amnt_loaded/load_rate)*self.pay_rate2
+        elif(num_crews == 3):
+            cost = (amnt_loaded/load_rate)*self.pay_rate3
         else:
             cost = (amnt_loaded/load_rate)*self.pay_rate1
         self.c_of_op += cost
@@ -36,12 +39,8 @@ class Tipple():
         return cur_load
 
     def update_tipple(self, t, q):
-
         '''
-        print '\ntipple updated: '
-        print 't_new: ' + str(t)
-        print 'q_new: ' + str(q)
-        print ''
+        update tipple quainity last used (q), and time last used (t)
         '''
         self.t_last_used = t
         self.q_last_used = q
@@ -63,20 +62,13 @@ class Tipple():
         self.c_of_op += cost
 
     def calc_load_wait(self, q_to_fill, num_crews):
-        #TODO: change to calculate to variable capacity rather than 100
         #q_to_fill is the quantity the train needs to be loaded.
         #max_time accounts for when q_to_fill exceeds tipple capacity
         base_load_rate = 150.0/360.0
         load_rate = base_load_rate*num_crews
 
         max_time = self.get_capacity()/load_rate
-        #q_to_fill = q_target - self.get_q_last_used()
         time  = q_to_fill/load_rate
-
-        #print '\nfrom calc load rate'
-        #print 'time: ' + str(time) + ' rate: ' + str(load_rate)
-        #print 'q_to_fill: ' + str(q_to_fill)
-        #print 'amnt loaded : ' + str(time*load_rate)
 
         if(time>max_time):
             time = max_time

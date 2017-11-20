@@ -7,53 +7,106 @@ import train_stats
 random.seed(0)
 
 #TODO: DONE train loading time must be redefined in terms of train capacity to accomdate hi-capacity train
-#TODO: simulation must be extented to produce a weekly average for desired fields
+#TODO: DONE simulation must be extented to produce a weekly average for desired fields
 #TODO: need to introduce means of varying crew_num throughout the day
 #TODO: DONE calc_tipple_load in tipple.py needs to be refactored to incorporate cost calculations
 
 def main():
 
-    sim_days()
+    #input parameters to be given in menu
+    iterations = 10
+    crews_available = 3
+    four_train = True
+    output_dir = 'results/'
 
-def sim_days(days):
+    #output files will be given this name appended with the iteration number
+    file_name = 'katherine_test2'
+
+
+
+    run_sim(iterations, four_train, crews_available, output_dir, file_name)
+
+def run_sim(iterations, four_train, crews_available, output_dir, file_name):
+    days = iterations*364
+    yearly_stats = []
+    yearly_stats = sim_days(days, four_train, crews_available, yearly_stats)
+    train_stats.write_to_file(iterations, output_dir, file_name, yearly_stats)
+
+def sim_days(days, four_train, crews_available,  yearly_stats):
     std_arrivals = np.array([])
     xl_arrivals = np.array([])
     tipple = Tipple()
     trains = []
+    num_trains = 3 #default
 
+    #add fourth train
+    if(four_train == True):
+        print '4 TRAINS'
+        num_trains = 4
+
+    weekly_trains = num_trains*7+1
+
+    print 'num trains: ' + str(num_trains)
     #generates arrival times for each day -> day 0 is a sunday
     for day in range(0,days):
-        std_arrivals = np.append(std_arrivals, gen_std_arrivals(day))
+        std_arrivals = np.append(std_arrivals, gen_std_arrivals(day, num_trains))
         if(day%7 == 0):
             #generates arrival of high capacity train
-            xl_arrival = random.uniform(660,780)+(1440*day)+((day/7)*10080)
+            xl_arrival = random.uniform(660,780)+(1440*(day%7))+((day/7)*10080)
             xl_arrivals = np.append(xl_arrivals, int(round(xl_arrival)))
 
+    #create list of all trains
     for x in std_arrivals:
         trains.append(Train(x, 3))
     for x in xl_arrivals:
         trains.append(Train(x, 5))
 
+    #sort trains by arrival time
     trains = sorted(trains, key=lambda x: x.get_arrival_time())
 
+    print 'ttl_trains ' + str(len(trains)/10)
 
     #calculates departure and wait times for every train in the list
     for index, train in enumerate(trains):
         if(train.get_arrival_time() < trains[index-1].get_departure_time()):
             train.inc_wait_time(trains[index-1].get_departure_time()-train.get_arrival_time())
-        calc_departure(train, tipple)
+        calc_departure(train, tipple, crews_available)
 
-    weekly_dems = train_stats.weekly_demmurage_costs(trains)
-    weekly_runover = train_stats.weekly_runover_time(trains)
+    #calculate figures for each iteration(year)
+    i = 0
+    while(i<(days/364)):
+        ttl_trains_per_year = 52*weekly_trains
+        print 'ttl_trains_per_year: ' + str(ttl_trains_per_year)
+        base = ttl_trains_per_year*i
+        weekly_dems = train_stats.weekly_demmurage_costs(trains[base:base+ttl_trains_per_year], i, weekly_trains)
+        weekly_runover = train_stats.weekly_runover_time(trains[base:base+ttl_trains_per_year], i, weekly_trains)
+        weekly_tipple_c = train_stats.weekly_tipple_cost(trains[base:base+ttl_trains_per_year], i, weekly_trains)
 
-    print 'len wkly_dem: ' + str(len(weekly_dems))
-    print 'len wkly_ovr: ' + str(len(weekly_runover))
+        print np.shape(weekly_dems)
+        print np.shape(weekly_runover)
+        print np.shape(weekly_tipple_c)
 
-    print ''
-    print_results(trains, tipple, days)
+        yearly_stats.append(np.array([weekly_dems, weekly_runover, weekly_tipple_c]))
+        i+=1
 
-def gen_std_arrivals(day):
+    total_dems = 0
+
+    yr_dem = 0
+    for x in trains:
+        yr_dem += calc_demurrage(train)
+
+    print 'manual calculations: (debugging)'
+    print 'total c_of_op ' + str(tipple.get_c_of_op())
+    print 'year 1 demmurage: ' + str(yr_dem)
+    print 'total: ' + str(tipple.get_c_of_op()+yr_dem)
+    print 'week1 end: ' + str(10080)
+    print 'last train out: ' + str(trains[28].get_departure_time())
+
+    return yearly_stats
+
+def gen_std_arrivals(day, num_trains):
     '''
+    generates arrival times for standard trains (3 engines)
     arrival times are calculated within a continuous range of minutes
     60*24 = 1440 minutes in a day -> mod(1440)
     5:00 AM = 300
@@ -61,28 +114,24 @@ def gen_std_arrivals(day):
     generates arrival times on day x (x starts at 0)
     '''
     arrivals = np.array([])
-    for x in range(1,4):
+    for x in range(0,num_trains):
         n = random.uniform(300, 1200)+(1440*day)
         arrivals = np.append(arrivals, int(round(n)))
     return np.sort(arrivals)
 
-def calc_departure(train, tipple):
-    #BUG cur tipple load must be calculated based on start of load time, not arrival time FIXED
-    #BUG: tipple must be updated after loading FIXED
+def calc_departure(train, tipple, crews_available):
 
-    num_crews = 2 #hardcoded temporarily
+    num_crews = crews_available #hardcoded temporarily
     train_load_rate = 100.0/180.0
     tipple_load_rate = tipple.get_capacity()/360.0
 
     #time at which train first arrives in postion to load
     load_start = train.get_arrival_time()+train.get_wait_time()
 
-    #below line calculates loading occuring during idle time between trains
+    #line below calculates loading occuring during idle time between trains
     #if no idle time the load_start == tipple.t_last_used and no changes are made
-
     cur_tipple_load = tipple.calc_tipple_load(load_start, num_crews)
     tipple.update_tipple(load_start, cur_tipple_load)
-    #print ''
 
     #below while loop accomodates the hi_capcity trains that cannot be loaded all at once
     done = False
@@ -90,55 +139,28 @@ def calc_departure(train, tipple):
     while(not done):
         q_to_fill = train.get_capacity() - train.get_loaded()
         if(train.get_engines() == 5):
-            #print "\nbig train status: "
-            #print 'cur_load: ' + str(train.get_loaded())
-            #print 'q_to_fill: ' + str(q_to_fill)
-
-            #if(cur_tipple_load >= q_to_fill):
+            if(cur_tipple_load >= q_to_fill):
                 #if train can be loaded with what is currently in the tipple -> may never happen in current set up
-            #    fill_time = q_to_fill/train_load_rate
-            #    departure += fill_time
-            #    train.inc_loaded(q_to_fill)
-            #    done = True
+                fill_time = q_to_fill/train_load_rate
+                departure += fill_time
+                train.inc_loaded(q_to_fill)
+                done = True
 
             if(q_to_fill <= tipple.get_capacity()):
-                #if possible fill tipple as much as required to finish train
-                #print "\nbig ready to load(elif1): tipple state"
-                #print "load start: " + str(load_start)
-                #print "tipple_q_last: " + str(tipple.get_q_last_used())
-                #print "tipple_t_last: " + str(tipple.get_t_last_used())
-
+                #if the tipple can hold more than the train requires -> fill only whats needed to finish the train
                 wait = tipple.calc_load_wait(q_to_fill, num_crews)
                 cur_load = tipple.calc_tipple_load(tipple.get_t_last_used()+wait, num_crews)
                 tipple.update_tipple(tipple.get_t_last_used()+wait, cur_load)
-                #print "\nbig train after waiting (elif1): "
-                #print "tipple_q_last: " + str(tipple.get_q_last_used())
-                #print "tipple_t_last: " + str(tipple.get_t_last_used())
-                #print "wait time: " + str(wait)
-
-
                 train.inc_wait_time(wait)
+
                 #once tipple is filled calculate departure time and update train
                 fill_time = q_to_fill/train_load_rate
                 departure += (wait+fill_time)
                 train.inc_loaded(q_to_fill)
                 tipple.update_tipple(tipple.get_t_last_used()+fill_time, 0)
-
-
-                #print "big train second fill complete"
-                #print "train cur_load: " + str(train.get_loaded())
-                #print "tipple_q_last: " + str(tipple.get_q_last_used())
-                #print "tipple_t_last: " + str(tipple.get_t_last_used())
-
                 done = True
 
             else:
-                #print "big train ready to load(else)"
-                #print "load start: " + str(load_start)
-                #print "tipple_q_last: " + str(tipple.get_q_last_used())
-                #print "tipple_t_last: " + str(tipple.get_t_last_used())
-                #print ''
-
                 #if not possible to fill in one go -> fill tipple completely
                 q_to_fill = tipple.get_capacity() - tipple.get_q_last_used()
                 wait = tipple.calc_load_wait(q_to_fill, num_crews)
@@ -146,27 +168,13 @@ def calc_departure(train, tipple):
                 tipple.update_tipple(tipple.get_t_last_used()+wait, cur_load)
                 train.inc_wait_time(wait)
 
-                #print "big train - first fill start: "
-                #print "tipple_q_last: " + str(tipple.get_q_last_used())
-                #print "tipple_t_last: " + str(tipple.get_t_last_used())
-                #print ''
-
                 #load entire tipple into train
                 fill_time = tipple.get_q_last_used()/train_load_rate
                 departure += (wait+fill_time)
                 train.inc_loaded(tipple.get_q_last_used())
                 tipple.update_tipple(tipple.get_t_last_used()+fill_time, 0)
 
-                #print "big train - first fill completed: "
-                #print "train cur_load: " + str(train.get_loaded())
-                #print "tipple_q_last: " + str(tipple.get_q_last_used())
-                #print "tipple_t_last: " + str(tipple.get_t_last_used())
-
         elif(train.get_engines() == 3):
-            #print  '\nregular train arrives - tipple state: '
-            #print  't_last_used = ' + str(tipple.get_t_last_used())
-            #print  'q_last_used = ' + str(tipple.get_q_last_used())
-
             if(cur_tipple_load >= q_to_fill):
                 #if regular train can be filled with whats currently in tipple
                 fill_time = q_to_fill/train_load_rate
@@ -178,9 +186,6 @@ def calc_departure(train, tipple):
                 tipple.update_tipple(tipple.get_t_last_used()+wait, cur_load)
 
                 train.inc_wait_time(wait)
-                #print 'regular train after waiting for tipple to load:'
-                #print  't_last_used = ' + str(tipple.get_t_last_used())
-                #print  'q_last_used = ' + str(tipple.get_q_last_used())
 
                 #calculate fill and departure times
                 fill_time = q_to_fill/train_load_rate
@@ -189,46 +194,15 @@ def calc_departure(train, tipple):
             #update tipple and train
             train.inc_loaded(q_to_fill)
             tipple.update_tipple(departure, tipple.get_q_last_used()-q_to_fill)
-            #print 'after train leaves - tipple update: '
-            #print  't_last_used = ' + str(tipple.get_t_last_used())
-            #print  'q_last_used = ' + str(tipple.get_q_last_used())
-            #print '\n\n'
             done = True
 
-
+    #train.set_tipple_cost_at_exit(tipple.get_c_of_op())
     train.set_departure_time(departure)
     return
 
 def calc_demurrage(train):
-    dem_rate = (train.get_engines()*5000)/60
+    dem_rate = (train.get_engines()*5000.0)/60.0
     return train.get_wait_time()*dem_rate
-
-def print_day(trains, tipple):
-    '''
-    more verbose output for debugging daily calculations
-    must be called within sim_day()
-    '''
-    print "train 1 arrives: " + str(trains[0].get_arrival_time())
-    print "train 1 departs: " + str(trains[0].get_departure_time())
-    print "tipple state after train 1"
-    print "tipple t_last_used: " + str(tipple.get_t_last_used())
-    print "tipple q_last_used: " + str(tipple.get_q_last_used())
-
-    print ''
-
-    print "train 2 arrives: " + str(trains[1].get_arrival_time())
-    print "train 2 departs: " + str(trains[1].get_departure_time())
-    print "tipple state after train 2"
-    print "tipple t_last_used: " + str(tipple.get_t_last_used())
-    print "tipple q_last_used: " + str(tipple.get_q_last_used())
-
-    print ''
-
-    print "train 3 arrives: " + str(trains[2].get_arrival_time())
-    print "train 3 departs: " + str(trains[2].get_departure_time())
-    print "tipple state after train 3"
-    print "tipple t_last_used: " + str(tipple.get_t_last_used())
-    print "tipple q_last_used: " + str(tipple.get_q_last_used())
 
 def print_arrivals(trains, day):
     '''
