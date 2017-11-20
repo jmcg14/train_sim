@@ -13,7 +13,7 @@ random.seed(0)
 
 def main():
 
-    sim_days(365)
+    sim_days()
 
 def sim_days(days):
     std_arrivals = np.array([])
@@ -24,7 +24,7 @@ def sim_days(days):
     #generates arrival times for each day -> day 0 is a sunday
     for day in range(0,days):
         std_arrivals = np.append(std_arrivals, gen_std_arrivals(day))
-        if(day%7 == 4):
+        if(day%7 == 0):
             #generates arrival of high capacity train
             xl_arrival = random.uniform(660,780)+(1440*day)+((day/7)*10080)
             xl_arrivals = np.append(xl_arrivals, int(round(xl_arrival)))
