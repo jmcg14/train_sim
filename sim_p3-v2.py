@@ -12,14 +12,15 @@ random.seed(0)
 #TODO: DONE calc_tipple_load in tipple.py needs to be refactored to incorporate cost calculations
 
 def main():
-
+    print_cute_train()
     iterations = get_iteration_input()
     crews_available = get_crew_input()
     four_train = fourth_train_yes_or_no()
     output_dir = get_dir_input()
     file_name = get_fileName_input()
-
+    print_users_preferences(iterations, crews_available, four_train, output_dir, file_name)
     run_sim(iterations, four_train, crews_available, output_dir, file_name)
+    print_goodbye()
 
 def run_sim(iterations, four_train, crews_available, output_dir, file_name):
     days = iterations*364
@@ -36,12 +37,12 @@ def sim_days(days, four_train, crews_available,  yearly_stats):
 
     #add fourth train
     if(four_train == True):
-        print ('4 TRAINS')
+        #print ('4 TRAINS')
         num_trains = 4
 
     weekly_trains = num_trains*7+1
 
-    print ('num trains: ' + str(num_trains))
+    #print ('num trains: ' + str(num_trains))
     #generates arrival times for each day -> day 0 is a sunday
     for day in range(0,days):
         std_arrivals = np.append(std_arrivals, gen_std_arrivals(day, num_trains))
@@ -59,7 +60,7 @@ def sim_days(days, four_train, crews_available,  yearly_stats):
     #sort trains by arrival time
     trains = sorted(trains, key=lambda x: x.get_arrival_time())
 
-    print ('ttl_trains ' + str(len(trains)/10))
+    #print ('ttl_trains ' + str(len(trains)/10))
 
     #calculates departure and wait times for every train in the list
     for index, train in enumerate(trains):
@@ -71,15 +72,15 @@ def sim_days(days, four_train, crews_available,  yearly_stats):
     i = 0
     while(i<(days/364)):
         ttl_trains_per_year = 52*weekly_trains
-        print ('ttl_trains_per_year: ' + str(ttl_trains_per_year))
+        #print ('ttl_trains_per_year: ' + str(ttl_trains_per_year))
         base = ttl_trains_per_year*i
         weekly_dems = train_stats.weekly_demmurage_costs(trains[base:base+ttl_trains_per_year], i, weekly_trains)
         weekly_runover = train_stats.weekly_runover_time(trains[base:base+ttl_trains_per_year], i, weekly_trains)
         weekly_tipple_c = train_stats.weekly_tipple_cost(trains[base:base+ttl_trains_per_year], i, weekly_trains)
 
-        print (np.shape(weekly_dems))
-        print (np.shape(weekly_runover))
-        print (np.shape(weekly_tipple_c))
+        #print (np.shape(weekly_dems))
+        #print (np.shape(weekly_runover))
+        #print (np.shape(weekly_tipple_c))
 
         yearly_stats.append(np.array([weekly_dems, weekly_runover, weekly_tipple_c]))
         i+=1
@@ -90,12 +91,12 @@ def sim_days(days, four_train, crews_available,  yearly_stats):
     for x in trains:
         yr_dem += calc_demurrage(train)
 
-    print ('manual calculations: (debugging)')
-    print ('total c_of_op ' + str(tipple.get_c_of_op()))
-    print ('year 1 demmurage: ' + str(yr_dem))
-    print ('total: ' + str(tipple.get_c_of_op()+yr_dem))
-    print ('week1 end: ' + str(10080))
-    print ('last train out: ' + str(trains[28].get_departure_time()))
+    #print ('manual calculations: (debugging)')
+    #print ('total c_of_op ' + str(tipple.get_c_of_op()))
+    #print ('year 1 demmurage: ' + str(yr_dem))
+    #print ('total: ' + str(tipple.get_c_of_op()+yr_dem))
+    #print ('week1 end: ' + str(10080))
+    #print ('last train out: ' + str(trains[28].get_departure_time()))
 
     return yearly_stats
 
@@ -228,19 +229,27 @@ def print_results(trains, tipple, days):
 
 #Function that will ask the user where their result folder is located at. 
 def get_dir_input():
-    print("Hi")
+   print("\n4. Enter the directory name for the output files.")
+   print("   Example: '/results'   ")
+   output_dir = input('   Output Directory Path: ')
+   return output_dir
+
 
 #Function that will ask the user what they want to name their output file as. 
 #Output files will be given this name appended with the iteration number. 
 def get_fileName_input():
-    print("Hello")
-	
+    print("\n5. Output files will be given a name of your choice appended with the iteration number.")
+    print("   Please enter a name that you want the output files to be called.")
+    print("   Example: 'trainSimulationData' ")
+    file_name = input('   Enter name for file output:  ')
+    return file_name
 	
 #Function to see if the user wants to run sim with 4th daily train or not. 
 def fourth_train_yes_or_no():
-    four_train = True
-    print("Would you like the simulation to run with three standard trains daily or four standard trains daily (Y/N): ")
-    if(four_train == 'Y'):
+    ans = True
+    #print("Would you like the simulation to run with three standard trains daily or four standard trains daily (Y/N): ")
+    ans = input('\n3. Would you like the simulation to run with four standard trains daily (Y/N): ')
+    if(ans == 'Y' or ans == 'y'):
       return True
     else:
       return False
@@ -250,7 +259,7 @@ def get_crew_input():
     ans = True
 	
     while(ans==True):
-      num_of_crews = int(input('Enter the number of Crews (1, 2, 3): '))
+      num_of_crews = int(input('\n2. Enter the number of Crews (1, 2, 3): '))
       if(num_of_crews != 1 and num_of_crews !=2 and num_of_crews != 3):
         print ('INVALID INPUT!\n')
       else:
@@ -262,7 +271,9 @@ def get_iteration_input():
     ans = True
 
     while(ans==True):
-      numI = int(input('Enter the number of iterations that you want the simulation to run for (1 - 10): '))
+      print("1. Enter the number of iterations that you want the simulation to run for (1 - 10)." )
+      print("   Please remember that 1 iteration equals 364 days. ")
+      numI = int(input('   Number of iterations:  '))
       if(numI != 1 and numI !=2 and numI != 3 and numI != 4 and numI !=5 and numI != 6 and  numI != 7 and numI !=8 and numI != 9 and numI != 10):
         print ('INVALID INPUT!\n')
       else:
@@ -271,13 +282,37 @@ def get_iteration_input():
 	
 #Function to print cute train and welcome message 
 def print_cute_train():
-    print ("\n  _____                 . . . . . o o o o o")
+    print ("\n\n\n  _____                 . . . . . o o o o o")
     print ("__|[_]|__ ___________ _______    ____      o")
     print ("|[] [] []| [] [] [] [] [_____(__  ][]]_n_n__][.")
     print ("_|________|_[_________]_[________]_|__|________)<")
     print ("oo    oo 'oo      oo ' oo    oo 'oo 0000---oo\_")
     print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print ("        WELCOME TO ASPEN-BOULDER COAL COMPANY")
+    print ("        WELCOME TO ASPEN-BOULDER COAL COMPANY\n\n")
+    print("You have questions. We have answers. ")
+    print("\nBut first.....\n")
+    print("Please answer the following 5 questions regarding your simulation preferences. ")
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n")
 
+def print_users_preferences(iterations, crews_available, four_train, output_dir, file_name):
+    print("\n\n\n\nYou have choosen the following simulation prefernces")
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("Number of iterations: " + str(iterations))
+    print("Number of crews staffed: " + str(crews_available))
+    if(four_train == False):
+      print("Simulation will run with 3 daily standard trains. ")
+    else:
+      print("Simulation will run with 4 daily standard trains. ")
+    print("Results will be located within the directory of: " + str(output_dir))
+    print("Result files will be named: " + str(file_name))
+    print("\n\n")
+    print("Simulation Time")
+    print("~~~~~~~~~~~~~~~\n\n\n")
+	
+#Function to print a good bye message
+def print_goodbye():
+   print("\nWell. \nIt's been fun. \nUntil next time my friend. \n\n")
+   
+   
 if __name__=="__main__":
     main()
